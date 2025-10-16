@@ -77,13 +77,9 @@ export class AuthController {
     const cookies = cookieFactory(req, res);
     const refreshToken = cookies.get(constants.REFRESH_TOKEN);
 
-    if (!refreshToken) {
-      throw new UnauthorizedException();
-    }
-
     const tokens = await this.authService.refreshTokens(
-      refreshToken,
       userAgent || 'unknown',
+      refreshToken,
     );
 
     cookies.set(

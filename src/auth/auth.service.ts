@@ -62,7 +62,11 @@ export class AuthService {
     return await this.tokensService.generateTokens(payload, userAgent);
   }
 
-  async refreshTokens(refreshToken: string, userAgent: string) {
+  async refreshTokens(userAgent: string, refreshToken?: string) {
+    if (!refreshToken) {
+      throw new UnauthorizedException();
+    }
+
     if (await this.tokensService.isMayRefreshTokens(refreshToken)) {
       const token = await this.tokensService.deleteRefreshToken(refreshToken);
       const user = await this.usersService.findOne(token.userId);
