@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String    @id @default(uuid())
+  email    String    @unique
+  password String
+  bookings Booking[]
+  tokens   Token[]
+
+  @@map("users")
+}
+
+model Token {
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  userAgent String   @map("user_agent")
+
+  @@unique([userId, userAgent])
+  @@map("tokens")
+}
+
+model Event {
+  id         String    @id @default(uuid())
+  name       String
+  totalSeats Int       @map("total_seats")
+  bookings   Booking[]
+
+  @@map("events")
+}
+
+model Booking {
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @map("user_id")
+  event     Event    @relation(fields: [eventId], references: [id])
+  eventId   String   @map("event_id")
+  createdAt DateTime @default(now())
+
+  @@unique([userId, eventId])
+  @@map("bookings")
+}
