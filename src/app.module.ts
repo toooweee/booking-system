@@ -5,8 +5,17 @@ import { BookingsModule } from './bookings/bookings.module';
 import { EventsModule } from './events/events.module';
 import { EnvModule } from './env/env.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { TokensModule } from './tokens/tokens.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, BookingsModule, EventsModule, EnvModule, PrismaModule],
+  imports: [
+    AuthModule,
+    UsersModule,
+    BookingsModule,
+    EventsModule,
+    EnvModule,
+    PrismaModule,
+    TokensModule,
+  ],
 })
 export class AppModule {}
