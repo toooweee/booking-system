@@ -1,7 +1,7 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
-import * as uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import { JwtPayload } from './jwt-payload.interface';
 import { add } from 'date-fns';
 import { EnvService } from '../env/env.service';
@@ -25,7 +25,7 @@ export class TokensService {
   }
 
   async saveRefreshToken(userId: string, userAgent: string) {
-    const token = uuid.v4();
+    const token = uuidv4();
 
     return this.prismaService.token.upsert({
       where: {
@@ -64,7 +64,7 @@ export class TokensService {
     return new Date() <= new Date(existingToken.expiresAt);
   }
 
-  private async findRefreshToken(token: string) {
+  async findRefreshToken(token: string) {
     return this.prismaService.token.findUnique({
       where: {
         token,
