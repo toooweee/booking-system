@@ -6,6 +6,7 @@ import { EventsModule } from './events/events.module';
 import { EnvModule } from './env/env.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { TokensModule } from './tokens/tokens.module';
+import { ProvidersModule } from './providers/providers.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { TokensModule } from './tokens/tokens.module';
     EnvModule,
     PrismaModule,
     TokensModule,
+    ProvidersModule,
   ],
 })
 export class AppModule {}

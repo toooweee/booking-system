@@ -7,14 +7,15 @@ import {
   Post,
   Req,
   Res,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthDto } from './dto';
 import { Request, Response } from 'express';
 import { constants, cookieFactory } from '@common/helpers';
-import { Cookies, UserAgent } from '@common/decorators';
+import { Cookies, Public, UserAgent } from '@common/decorators';
+import { Tokens } from './interfaces';
 
+@Public()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -28,17 +29,7 @@ export class AuthController {
   ) {
     const tokens = await this.authService.register(registerDto, userAgent);
 
-    const cookies = cookieFactory(req, res);
-
-    cookies.set(
-      constants.REFRESH_TOKEN,
-      tokens.refreshToken,
-      1000 * 60 * 60 * 24 * 30,
-    );
-
-    return {
-      accessToken: tokens.accessToken,
-    };
+    return this.handleTokens(tokens, req, res);
   }
 
   @Post('login')
@@ -51,17 +42,7 @@ export class AuthController {
   ) {
     const tokens = await this.authService.login(loginDto, userAgent);
 
-    const cookies = cookieFactory(req, res);
-
-    cookies.set(
-      constants.REFRESH_TOKEN,
-      tokens.refreshToken,
-      1000 * 60 * 60 * 24 * 30,
-    );
-
-    return {
-      accessToken: tokens.accessToken,
-    };
+    return this.handleTokens(tokens, req, res);
   }
 
   @Get('refresh')
@@ -71,12 +52,34 @@ export class AuthController {
     @UserAgent() userAgent: string,
     @Cookies(constants.REFRESH_TOKEN) refreshToken: string,
   ) {
-    const cookies = cookieFactory(req, res);
-
     const tokens = await this.authService.refreshTokens(
       userAgent,
       refreshToken,
     );
+
+    return this.handleTokens(tokens, req, res);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Cookies(constants.REFRESH_TOKEN) refreshToken: string,
+  ) {
+    const cookies = cookieFactory(req, res);
+
+    await this.authService.logout(refreshToken);
+
+    cookies.remove(constants.REFRESH_TOKEN);
+
+    return {
+      message: 'success',
+    };
+  }
+
+  private handleTokens(tokens: Tokens, req: Request, res: Response) {
+    const cookies = cookieFactory(req, res);
 
     cookies.set(
       constants.REFRESH_TOKEN,
@@ -86,27 +89,6 @@ export class AuthController {
 
     return {
       accessToken: tokens.accessToken,
-    };
-  }
-
-  @Get('logout')
-  async logout(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-    @Cookies(constants.REFRESH_TOKEN) refreshToken: string,
-  ) {
-    const cookies = cookieFactory(req, res);
-
-    if (!refreshToken) {
-      throw new UnauthorizedException();
-    }
-
-    const result = await this.authService.logout(refreshToken);
-
-    cookies.remove(constants.REFRESH_TOKEN);
-
-    return {
-      userAgent: result.userAgent,
     };
   }
 }

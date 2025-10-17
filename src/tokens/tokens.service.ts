@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
-import { JwtPayload } from './jwt-payload.interface';
 import { add } from 'date-fns';
 import { EnvService } from '../env/env.service';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class TokensService {
@@ -52,16 +52,6 @@ export class TokensService {
         token: true,
       },
     });
-  }
-
-  async isMayRefreshTokens(refreshToken: string) {
-    const existingToken = await this.findRefreshToken(refreshToken);
-
-    if (!existingToken) {
-      return false;
-    }
-
-    return new Date() <= new Date(existingToken.expiresAt);
   }
 
   async findRefreshToken(token: string) {

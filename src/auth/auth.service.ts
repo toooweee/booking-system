@@ -6,7 +6,7 @@ import {
 import { AuthDto } from './dto';
 import { UsersService } from '../users/users.service';
 import { TokensService } from '../tokens/tokens.service';
-import { JwtPayload } from '../tokens/jwt-payload.interface';
+import { payloadFactory } from '../tokens/helpers';
 
 @Injectable()
 export class AuthService {
@@ -26,11 +26,7 @@ export class AuthService {
 
     const user = await this.usersService.create(registerDto);
 
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
+    const payload = payloadFactory(user);
 
     return await this.tokensService.generateTokens(payload, userAgent);
   }
@@ -38,60 +34,68 @@ export class AuthService {
   async login(loginDto: AuthDto, userAgent: string) {
     const { email, password } = loginDto;
 
-    const user = await this.usersService.findOne(email);
+    const user = await this.usersService.findOne(email, true);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isPasswordMatching = await this.usersService.verifyPassword(
+      user.password,
+      password,
+    );
+
+    if (!isPasswordMatching) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload = payloadFactory(user);
+
+    return await this.tokensService.generateTokens(payload, userAgent);
+  }
+
+  async refreshTokens(userAgent: string, refreshToken: string) {
+    if (!refreshToken) {
+      throw new UnauthorizedException();
+    }
+
+    const existingToken =
+      await this.tokensService.findRefreshToken(refreshToken);
+
+    if (!existingToken) {
+      throw new UnauthorizedException();
+    }
+
+    if (new Date() >= new Date(existingToken.expiresAt)) {
+      await this.tokensService.deleteRefreshToken(refreshToken);
+
+      throw new UnauthorizedException();
+    }
+
+    const user = await this.usersService.findOne(existingToken.userId);
 
     if (!user) {
       throw new UnauthorizedException();
     }
 
-    const isPasswordMathcing = await this.usersService.verifyPassword(
-      user.password,
-      password,
-    );
+    await this.tokensService.deleteRefreshToken(refreshToken);
 
-    if (!isPasswordMathcing) {
-      throw new UnauthorizedException();
-    }
+    const payload = payloadFactory(user);
 
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    return await this.tokensService.generateTokens(payload, userAgent);
+    return this.tokensService.generateTokens(payload, userAgent);
   }
 
-  async refreshTokens(userAgent: string, refreshToken?: string) {
+  async logout(refreshToken?: string) {
     if (!refreshToken) {
       throw new UnauthorizedException();
     }
 
-    if (await this.tokensService.isMayRefreshTokens(refreshToken)) {
-      const token = await this.tokensService.deleteRefreshToken(refreshToken);
-      const user = await this.usersService.findOne(token.userId);
-
-      const payload: JwtPayload = {
-        sub: user!.id,
-        email: user!.email,
-        role: user!.role,
-      };
-
-      return this.tokensService.generateTokens(payload, userAgent);
-    }
-
-    await this.tokensService.deleteRefreshToken(refreshToken);
-
-    throw new UnauthorizedException();
-  }
-
-  async logout(refreshToken: string) {
     const token = await this.tokensService.findRefreshToken(refreshToken);
 
     if (!token) {
       throw new UnauthorizedException();
     }
 
-    return this.tokensService.deleteRefreshToken(token.token);
+    await this.tokensService.deleteRefreshToken(token.token);
   }
 }
