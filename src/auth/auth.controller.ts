@@ -13,6 +13,7 @@ import { AuthService } from './auth.service';
 import { AuthDto } from './dto';
 import { Request, Response } from 'express';
 import { constants, cookieFactory } from '@common/helpers';
+import { Cookies, UserAgent } from '@common/decorators';
 
 @Controller('auth')
 export class AuthController {
@@ -23,13 +24,9 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Body() registerDto: AuthDto,
+    @UserAgent() userAgent: string,
   ) {
-    const userAgent = req.headers['user-agent'];
-
-    const tokens = await this.authService.register(
-      registerDto,
-      userAgent || 'unknown',
-    );
+    const tokens = await this.authService.register(registerDto, userAgent);
 
     const cookies = cookieFactory(req, res);
 
@@ -50,13 +47,9 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Body() loginDto: AuthDto,
+    @UserAgent() userAgent: string,
   ) {
-    const userAgent = req.headers['user-agent'];
-
-    const tokens = await this.authService.login(
-      loginDto,
-      userAgent || 'unknown',
-    );
+    const tokens = await this.authService.login(loginDto, userAgent);
 
     const cookies = cookieFactory(req, res);
 
@@ -75,13 +68,13 @@ export class AuthController {
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @UserAgent() userAgent: string,
+    @Cookies(constants.REFRESH_TOKEN) refreshToken: string,
   ) {
-    const userAgent = req.headers['user-agent'];
     const cookies = cookieFactory(req, res);
-    const refreshToken = cookies.get(constants.REFRESH_TOKEN);
 
     const tokens = await this.authService.refreshTokens(
-      userAgent || 'unknown',
+      userAgent,
       refreshToken,
     );
 
@@ -97,9 +90,12 @@ export class AuthController {
   }
 
   @Get('logout')
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Cookies(constants.REFRESH_TOKEN) refreshToken: string,
+  ) {
     const cookies = cookieFactory(req, res);
-    const refreshToken = cookies.get(constants.REFRESH_TOKEN);
 
     if (!refreshToken) {
       throw new UnauthorizedException();
